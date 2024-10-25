@@ -7,7 +7,7 @@ _DEFAULT_SCREEN_HEIGHT = 1050
 
 class DMDPiston:
     WIDTH = 1024
-    HEIGHT = 768
+    HEIGHT = 1024
     _screen_width: int = _DEFAULT_SCREEN_WIDTH
     _screen_height: int = _DEFAULT_SCREEN_HEIGHT
 
