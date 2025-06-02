@@ -1,0 +1,23 @@
+DMD_nSizeY=768
+DMD_nSizeX=1024
+n_actu_1D = 8
+roi_size=256
+dmd = DMDPiston(n_actu_1D, roi_size=roi_size, roi_shifts=(370, 520))  # H,V (400,520)
+
+# Génération d'hologrammes
+nbr_holos = 20000
+Holos_Actu = []
+maps=[]
+generated_fields = set()
+for i in range(nbr_holos):  
+    dmd.generate_fields(n_actu_1D, rand_amp=False, rand_phi=True,phi_clx=None,phi=None)
+    target_field = np.copy(dmd.field_matrix)
+    maps.append(dmd.field)
+     
+    target_field /= np.max(np.abs(target_field))
+    # Conversion en hologramme
+    holo_sp = holo_SP(target_field, lut, px_comb).astype(np.uint8)
+    holo_sp=holo_sp*(2**8-1)
+    Holos_Actu.append(holo_sp)
+    if i % 100 == 0:
+        print("Progress: Generated holograms =", i)

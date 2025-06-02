@@ -300,6 +300,49 @@ def holo_SP_optimized(field, lut, pixel_combinations, step=0.01, ds_method='cent
 
 
 
+import cupy as cp
+
+def holo_SP_optimized_cupy(field, lut, pixel_combinations, step=0.01, ds_method='center', renorm=True):
+    """Optimized version of holo_SP that maintains accuracy while significantly improving speed using GPU."""
+    
+    if renorm:
+        field /= cp.max(cp.abs(field))  # Normalize amplitude
+    
+    # Determine superpixel size
+    m = len(pixel_combinations[0])
+    n_SP = int(cp.sqrt(m))
+
+    # Downsample field
+    ds_field = _down_sample(field, n_SP, method=ds_method)
+    sh = ds_field.shape  # (height, width)
+
+    # Initialize hologram
+    holo = cp.zeros((sh[0] * n_SP, sh[1] * n_SP), dtype=int)
+
+    # Rescale field values for LUT lookup
+    field_sc = ds_field / (cp.max(cp.abs(ds_field)) * step)
+    reim0 = len(lut) // 2
+
+    # **Vectorized LUT lookup**
+    re_indices = cp.clip(cp.round(cp.real(field_sc)).astype(int) + reim0, 0, lut.shape[0] - 1)
+    im_indices = cp.clip(cp.round(cp.imag(field_sc)).astype(int) + reim0, 0, lut.shape[1] - 1)
+    lut_indices = lut[re_indices, im_indices]
+
+    # **Vectorized assignment of superpixel patterns**
+    sp_pixels = pixel_combinations[lut_indices]  # Get superpixel patterns (shape: sh[0], sh[1], m)
+
+    # **Apply Row-Wise Rolling with Corrected Assignment**
+    for j in range(sh[0]):
+        shift = cp.mod(n_SP * j, n_SP**2)  # Compute shift for row `j`
+        rolled_sp = cp.roll(sp_pixels[j], -shift, axis=1)  # Apply shift
+
+        # **Reshape & Assign to Hologram Correctly**
+        for i in range(sh[1]):
+            holo[n_SP * j:n_SP * (j + 1), n_SP * i:n_SP * (i + 1)] = rolled_sp[i].reshape(n_SP, n_SP).T
+
+    return holo
+
+
 
 import numpy as np
 
